@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Bağlantılar özel: arama motorları dizinlemesin. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Defter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+  /* Uygulamanın paleti (lib/core/theme.dart): tek vurgu rengi, çerçeve
+     yerine ince çizgiler, rakamlar serif. */
+  :root {
+    --paper: #FBFAF7; --raised: #F1EEE7; --ink: #1A1815; --muted: #5C5651;
+    --faint: #716A64; --rule: #E4DFD6; --accent: #2F6B4F; --alert: #A63D2F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #141210; --raised: #201D19; --ink: #F2EEE7; --muted: #B5ADA5;
+      --faint: #8F8881; --rule: #2E2A25; --accent: #74C39A; --alert: #E0806F;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--paper); color: var(--ink); }
+  body {
+    font: 15px/1.5 Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 28px 20px 48px; }
+  .label {
+    font-size: 11.5px; font-weight: 600; letter-spacing: 0.12em;
+    color: var(--muted); text-transform: uppercase; margin: 0 0 10px;
+  }
+  .tag {
+    display: inline-block; border: 1px solid var(--rule); border-radius: 4px;
+    padding: 1px 7px; margin-left: 8px; vertical-align: middle;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: var(--muted);
+  }
+  h1 {
+    font: 500 30px/1.15 Newsreader, Georgia, serif; margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .sub { color: var(--faint); font-size: 13px; margin-top: 4px; }
+  .total { margin: 28px 0 6px; color: var(--muted); }
+  .big {
+    font: 400 44px/1.1 Newsreader, Georgia, serif; letter-spacing: -0.02em;
+  }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 28px 0; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+  .row .main { flex: 1; min-width: 0; }
+  .row .name { font-size: 16px; }
+  .row .meta { color: var(--faint); font-size: 13px; }
+  .money { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .plus { color: var(--accent); }
+  .even { color: var(--accent); font-weight: 600; }
+  .arrow { color: var(--faint); margin: 0 6px; }
+  .txn .money { font-weight: 500; }
+  .day { color: var(--muted); font-size: 12px; font-weight: 600;
+         letter-spacing: 0.08em; margin: 18px 0 2px; }
+  .note { color: var(--faint); font-size: 13px; }
+  .center { text-align: center; padding-top: 80px; }
+  footer { margin-top: 40px; color: var(--faint); font-size: 12.5px; }
+  button.link {
+    background: none; border: 0; padding: 0; color: var(--accent);
+    font: inherit; font-weight: 600; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<main id="app"><p class="note center">Yükleniyor…</p></main>
+
+<script src="settle.js"></script>
+<script>
+  // Supabase'in HERKESE AÇIK anahtarı (uygulamanın içindekiyle aynı; gizli
+  // değil). Bu sayfa onunla yalnızca public_ledger fonksiyonunu çağırabilir:
+  // o da bağlantının anahtarıyla eşleşen TEK defteri, salt-okunur döndürür.
+  const SUPABASE_URL = 'https://ibmngcviyiwikhovxrmk.supabase.co';
+  const SUPABASE_ANON_KEY =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlibW5nY3ZpeWl3aWtob3Z4cm1rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0MjA1NjksImV4cCI6MjEwMDk5NjU2OX0.LihmQCbeMALjNjbdWCMRsap-tF7rnz-3xpkzaDgDOGg';
+
+  const app = document.getElementById('app');
+
+  // Anahtar adresin # kısmında: tarayıcı bu kısmı sunucuya hiç göndermez,
+  // sayfanın barındırıldığı yerin kayıtlarında görünmez.
+  const token = decodeURIComponent(location.hash.replace(/^#/, '')).trim();
+
+  // Veriden gelen hiçbir metin HTML olarak yorumlanmasın (isimlere kod
+  // yazılabilir): her şey textContent ile.
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  let currency = 'TRY';
+  const fmt = (v) => new Intl.NumberFormat('tr-TR', {
+    style: 'currency', currency, maximumFractionDigits: 2,
+  }).format(v);
+  const fmtShort = (v) => new Intl.NumberFormat('tr-TR', {
+    style: 'currency', currency,
+    maximumFractionDigits: Math.abs(v) >= 1000 ? 0 : 2,
+  }).format(v);
+  const dateFmt = new Intl.DateTimeFormat('tr-TR', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  });
+  const day = (iso) => dateFmt.format(new Date(iso + 'T12:00:00'));
+
+  function message(title, body) {
+    app.replaceChildren();
+    const box = el('div', 'center');
+    box.append(el('h1', null, title), el('p', 'note', body));
+    app.append(box);
+  }
+
+  async function load() {
+    if (token.length < 20) {
+      message('Bağlantı eksik', 'Adresin sonundaki anahtar yok ya da yarım kopyalanmış.');
+      return;
+    }
+    let data;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/public_ledger`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ p_token: token }),
+      });
+      if (!res.ok) throw new Error(res.status);
+      data = await res.json();
+    } catch (e) {
+      message('Yüklenemedi', 'İnternet bağlantını kontrol edip sayfayı yenile.');
+      return;
+    }
+    if (!data) {
+      message('Bağlantı geçersiz', 'Bu bağlantı kapatılmış ya da hiç var olmamış. Defteri tutan kişiden yenisini iste.');
+      return;
+    }
+    render(data);
+  }
+
+  function render(d) {
+    currency = d.currency || 'TRY';
+    document.title = d.name;
+    app.replaceChildren();
+
+    const head = el('div');
+    const h1 = el('h1', null, d.name);
+    h1.append(el('span', 'tag', d.pool ? 'ORTAK KASA' : 'ETKİNLİK'));
+    head.append(h1);
+    if (d.starts_on || d.ends_on) {
+      const a = d.starts_on ? day(d.starts_on) : '';
+      const b = d.ends_on ? day(d.ends_on) : '';
+      head.append(el('div', 'sub', a && b ? `${a} – ${b}` : a || b));
+    }
+    app.append(head);
+
+    const balances = d.balances || [];
+    const total = balances.reduce((s, b) => s + b.paid, 0);
+    app.append(el('div', 'total', 'Toplam harcama'), el('div', 'big', fmt(total)));
+
+    // DURUM
+    app.append(el('hr'), el('p', 'label', 'Durum'));
+    const nets = {};
+    const names = {};
+    for (const b of balances) {
+      nets[b.id] = netOf(b);
+      names[b.id] = b.name;
+      const row = el('div', 'row');
+      const main = el('div', 'main');
+      main.append(el('div', 'name', b.name));
+      let meta = `ödedi ${dash(b.paid)} · payı ${dash(b.owed)}`;
+      if (b.sent > 0.004) meta += ` · gönderdi ${fmtShort(b.sent)}`;
+      if (b.received > 0.004) meta += ` · aldı ${fmtShort(b.received)}`;
+      main.append(el('div', 'meta', meta));
+      const n = nets[b.id];
+      const right = Math.abs(n) < 0.005
+        ? el('div', 'even', 'ödeşti')
+        : el('div', 'money' + (n > 0 ? ' plus' : ''), (n > 0 ? '+' : '−') + fmtShort(Math.abs(n)));
+      row.append(main, right);
+      app.append(row);
+    }
+
+    // HESAPLAŞMA — uygulamadakiyle aynı algoritma (settle.js)
+    app.append(el('hr'), el('p', 'label', 'Hesaplaşma'));
+    const transfers = minimalTransfers(nets);
+    if (!transfers.length) {
+      app.append(el('p', null, 'Herkes ödeşmiş durumda. Yapılacak bir transfer yok.'));
+    } else {
+      for (const t of transfers) {
+        const row = el('div', 'row');
+        const main = el('div', 'main name');
+        main.append(names[t.from] ?? '?', el('span', 'arrow', '→'), names[t.to] ?? '?');
+        row.append(main, el('div', 'money', fmtShort(t.amount)));
+        app.append(row);
+      }
+      app.append(el('p', 'note', `${transfers.length} transferle herkes ödeşiyor. Ödemeyi defteri tutan kişi uygulamada "Ödendi" diye işaretler.`));
+    }
+
+    // HARCAMALAR
+    const list = d.expenses || [];
+    if (list.length) {
+      app.append(el('hr'), el('p', 'label', 'Harcamalar'));
+      let lastDay = null;
+      for (const x of list) {
+        if (x.on_day !== lastDay) {
+          app.append(el('div', 'day', day(x.on_day).toLocaleUpperCase('tr-TR')));
+          lastDay = x.on_day;
+        }
+        const row = el('div', 'row txn');
+        const main = el('div', 'main');
+        const title = (x.description || '').trim() || 'Harcama';
+        main.append(el('div', 'name', title));
+        main.append(el('div', 'meta', x.is_settlement ? 'ödeme' : x.paid_by ? `${x.paid_by} ödedi` : ''));
+        row.append(main, el('div', 'money', x.is_settlement ? fmt(x.amount) : '−' + fmt(x.amount)));
+        app.append(row);
+      }
+    }
+
+    const foot = el('footer');
+    foot.append('Bu sayfa yalnızca okumak için. Bir hata görürsen defteri tutan kişiye yaz. ');
+    const again = el('button', 'link', 'Yenile');
+    again.onclick = load;
+    foot.append(again);
+    app.append(foot);
+  }
+
+  // Sıfırları rakamla değil tireyle (uygulamadaki gibi).
+  function dash(v) { return Math.abs(v) < 0.005 ? '—' : fmtShort(v); }
+
+  load();
+</script>
+</body>
+</html>
