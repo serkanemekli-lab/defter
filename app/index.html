@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <!--
+    Web sürümü (iPhone için PWA). Yayındaki adresi:
+    https://serkanemekli-lab.github.io/defter/app/
+    Derleme: flutter build web --release --base-href /defter/app/ --no-web-resources-cdn
+    (--base-href aşağıdaki /defter/app/'in yerine geçer.)
+  -->
+  <base href="/defter/app/">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Birkese: harcama ve ortak defter.">
+  <meta name="referrer" content="no-referrer">
+
+  <!-- iPhone: ana ekrana eklenince tam ekran açılsın, adı ve simgesi -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Birkese">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#FBFAF7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141210" media="(prefers-color-scheme: dark)">
+
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <title>Birkese</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Uygulama yüklenene kadar (ilk açılışta birkaç saniye) boş beyaz
+       ekran yerine uygulamanın kâğıt rengi ve adı. Renkler
+       lib/core/theme.dart ile aynı. */
+    html, body { margin: 0; height: 100%; background: #FBFAF7; }
+    #yukleniyor {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 10px;
+      font-family: Georgia, "Times New Roman", serif; color: #1A1815;
+    }
+    #yukleniyor .ad { font-size: 34px; }
+    #yukleniyor .alt {
+      font: 13px/1.4 system-ui, -apple-system, sans-serif; color: #716A64;
+    }
+    @media (prefers-color-scheme: dark) {
+      html, body { background: #141210; }
+      #yukleniyor { color: #F2EEE7; }
+      #yukleniyor .alt { color: #8F8881; }
+    }
+  </style>
+</head>
+<body>
+  <div id="yukleniyor">
+    <div class="ad">Birkese</div>
+    <div class="alt">Açılıyor…</div>
+  </div>
+  <script>
+    // Uygulamanın ilk karesi çizilince yükleme yazısını kaldır.
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('yukleniyor');
+      if (el) el.remove();
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
