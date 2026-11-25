@@ -35,8 +35,10 @@ if (!window._flutter) {
 }
 _flutter.buildConfig = {"engineRevision":"0cd610717bde95fd88343c64f81c11ba4e5c0010","builds":[{"compileTarget":"dart2js","renderer":"canvaskit","mainJsPath":"main.dart.js"}],"useLocalCanvasKit":true};
 
-_flutter.loader.load({
-  serviceWorkerSettings: {
-    serviceWorkerVersion: "3556301540" /* Flutter's service worker is deprecated and will be removed in a future Flutter release. */
-  }
-});
+
+// Flutter'in kendi service worker'i KAYDEDILMIYOR (2026-11-25).
+// Flutter onu kullanimdan kaldirdi: artik yalnizca kendini silip sayfayi
+// yeniden yukleyen bir "temizlik" calisani. Ayni kapsamda (/defter/app/)
+// bildirim calisani (firebase-messaging-sw.js) var; Flutter'inki onun
+// yerine gecip kaydi silerdi ve iPhone'da bildirimler sessizce dururdu.
+_flutter.loader.load();
