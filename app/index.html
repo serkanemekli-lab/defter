@@ -41,6 +41,11 @@
     #yukleniyor .alt {
       font: 13px/1.4 system-ui, -apple-system, sans-serif; color: #716A64;
     }
+    #yukleniyor button {
+      margin-top: 6px; padding: 12px 16px; border: 0; background: none;
+      font: 15px/1.4 system-ui, -apple-system, sans-serif; color: inherit;
+      text-decoration: underline; text-underline-offset: 4px;
+    }
     @media (prefers-color-scheme: dark) {
       html, body { background: #141210; }
       #yukleniyor { color: #F2EEE7; }
@@ -51,14 +56,45 @@
 <body>
   <div id="yukleniyor">
     <div class="ad">Birkese</div>
-    <div class="alt">Açılıyor…</div>
+    <div class="alt" id="yukleniyor-durum">Açılıyor…</div>
+    <button type="button" id="yukleniyor-yenile" hidden>Yeniden dene</button>
   </div>
   <script>
-    // Uygulamanın ilk karesi çizilince yükleme yazısını kaldır.
-    window.addEventListener('flutter-first-frame', function () {
-      var el = document.getElementById('yukleniyor');
-      if (el) el.remove();
-    });
+    // Uygulamanın ilk karesi çizilince yükleme yazısını kaldır. Uygulama
+    // dosyaları inemezse (internet yok, bağlantı koptu) "Açılıyor…"
+    // sonsuza kadar kalmasın: ne olduğunu söyle, yeniden deneme yolu ver.
+    // Web'de internetsiz açılış kopyası yok (bkz. local_cache.dart).
+    (function () {
+      var acildi = false;
+      var durum = document.getElementById('yukleniyor-durum');
+      var dugme = document.getElementById('yukleniyor-yenile');
+      function sorun(metin) {
+        if (acildi || !durum || !dugme) return;
+        durum.textContent = metin;
+        dugme.hidden = false;
+      }
+      dugme.addEventListener('click', function () { location.reload(); });
+      window.addEventListener('flutter-first-frame', function () {
+        acildi = true;
+        var el = document.getElementById('yukleniyor');
+        if (el) el.remove();
+      });
+      // Betik dosyası inemedi (flutter_bootstrap.js, main.dart.js). Kaynak
+      // hataları yukarı taşmaz; yakalama aşamasında dinlenir.
+      window.addEventListener('error', function (e) {
+        var t = e && e.target;
+        if (t && t.tagName === 'SCRIPT') {
+          sorun('Açılamadı. İnternet bağlantını kontrol et.');
+        }
+      }, true);
+      // Betik indi ama gerisi (motor, yazı tipleri) gelmiyor olabilir.
+      // Yükleme sürer; yalnızca bilgi ve düğme eklenir.
+      setTimeout(function () {
+        sorun(navigator.onLine === false
+          ? 'İnternet bağlantısı yok.'
+          : 'Beklenenden uzun sürüyor. Bağlantın yavaş olabilir.');
+      }, 25000);
+    })();
   </script>
   <!-- Telefon bildirimleri: ayarlar + Dart köprüsü (bkz. push.js). -->
   <script src="firebase-config.js"></script>

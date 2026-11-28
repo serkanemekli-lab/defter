@@ -2,11 +2,16 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
+<!-- İçerik güvenlik politikası: yalnızca kendi betiğimiz (settle.js ve
+     aşağıdaki satır içi betik, özetiyle) çalışır; bağlantı yalnızca
+     Supabase'e. Satır içi betik değişirse özet (sha256) de
+     değişmeli: tool/csp_hash.py. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-guD7HP9jYdUdqwD9BUqTtNrWrONQclyf9n6XLj8+g98='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://ibmngcviyiwikhovxrmk.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Bağlantılar özel: arama motorları dizinlemesin. -->
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<title>Defter</title>
+<title>Birkese</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
@@ -84,8 +89,14 @@
   const app = document.getElementById('app');
 
   // Anahtar adresin # kısmında: tarayıcı bu kısmı sunucuya hiç göndermez,
-  // sayfanın barındırıldığı yerin kayıtlarında görünmez.
-  const token = decodeURIComponent(location.hash.replace(/^#/, '')).trim();
+  // sayfanın barındırıldığı yerin kayıtlarında görünmez. Bozuk kodlanmış
+  // bir adres ("%E0%A4") sayfayı "Yükleniyor"da bırakmasın.
+  let token = '';
+  try {
+    token = decodeURIComponent(location.hash.replace(/^#/, '')).trim();
+  } catch (_) {
+    token = '';
+  }
 
   // Veriden gelen hiçbir metin HTML olarak yorumlanmasın (isimlere kod
   // yazılabilir): her şey textContent ile.
